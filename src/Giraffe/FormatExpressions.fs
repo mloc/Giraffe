@@ -45,7 +45,7 @@ let private formatStringMap =
         'u', (shortIdPattern,           ShortId.toUInt64     >> box)  // uint64
     ]
 
-let private convertToRegexPatternAndFormatChars (formatString : string) =
+let private convertToRegexPatternAndFormatChars (exactMatch : bool) (formatString : string) =
     let rec convert (chars : char list) =
         match chars with
         | '%' :: '%' :: tail ->
@@ -60,10 +60,12 @@ let private convertToRegexPatternAndFormatChars (formatString : string) =
             c.ToString() + pattern, formatChars
         | [] -> "", []
 
+    let anchor = if exactMatch then "$" else ""
+
     formatString.ToCharArray()
     |> Array.toList
     |> convert
-    |> (fun (pattern, formatChars) -> sprintf "^%s$" pattern, formatChars)
+    |> (fun (pattern, formatChars) -> sprintf "^%s%s" pattern, formatChars, anchor)
 
 /// **Description**
 ///
@@ -78,12 +80,12 @@ let private convertToRegexPatternAndFormatChars (formatString : string) =
 ///
 /// A Giraffe `HttpHandler` function which can be composed into a bigger web application.
 ///
-let tryMatchInput (format : PrintfFormat<_,_,_,_, 'T>) (input : string) (ignoreCase : bool) =
+let tryMatchInput (format : PrintfFormat<_,_,_,_, 'T>) (input : string) (ignoreCase : bool) (exactMatch : bool) =
     try
         let pattern, formatChars =
             format.Value
             |> Regex.Escape
-            |> convertToRegexPatternAndFormatChars
+            |> convertToRegexPatternAndFormatChars exactMatch
 
         let options =
             match ignoreCase with
